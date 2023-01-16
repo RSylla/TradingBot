@@ -93,10 +93,17 @@ class Broker:
             'X-SECURITY-TOKEN': self.__security_token,
             'CST': self.__cst_token
         }
-        for position in self.open_positions:
+        self.connection.request("GET", "/api/v1/positions", payload, headers)
+        res = self.connection.getresponse()
+        data = res.read()
+        print(data)
+
+        for position in data["positions"]
             dealId = position["dealId"]
             self.connection.request("DELETE", f"/api/v1/positions/{dealId}", payload, headers)
             self.open_positions.remove(position)
+
+
 
 
 obj = Broker()
