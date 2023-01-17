@@ -1,5 +1,7 @@
 import http.client
 import json
+from time import sleep
+
 
 class Broker:
 
@@ -9,7 +11,7 @@ class Broker:
         self.__account_balance = self.__session["BALANCE"]
         self.__cst_token = self.__session["CST_TOKEN"]
         self.__security_token = self.__session["X_SECURITY_TOKEN"]
-        self.open_positions = []
+        self.open_positions = self.__populate_open_positions()
 
     def __create_session(self):
         payload = json.dumps({
@@ -35,6 +37,31 @@ class Broker:
                   "BALANCE": account_balance}
         return output
 
+
+    def __populate_open_positions(self):
+        payload = ''
+        headers = {
+          'X-SECURITY-TOKEN': self.__security_token,
+          'CST': self.__cst_token
+        }
+        self.connection.request("GET", "/api/v1/positions", payload, headers)
+        res = self.connection.getresponse()
+        data = res.read()
+        open_positions = []
+        for pos in json.loads(data.decode("utf-8"))["positions"]:
+            position = {
+                "ticker": pos["market"]["epic"],
+                "name": pos["market"]["instrumentName"],
+                "type": pos["market"]["instrumentType"],
+                "date": pos["position"]["createdDate"],
+                "dealId": pos["position"]["dealId"],
+                "size": pos["position"]["size"],
+                "direction": pos["position"]["direction"],
+                "priceLevel": pos["position"]["level"]
+            }
+            open_positions.append(position)
+        return open_positions
+
     def get_account_balance(self):
         return self.__account_balance
 
@@ -54,30 +81,14 @@ class Broker:
             'Content-Type': 'application/json'
         }
         self.connection.request("POST", "/api/v1/positions", payload, headers)
-        res = self.connection.getresponse()
-        data = res.read()
-        dealReference = json.loads(data.decode("utf-8"))["dealReference"]
+        self.connection.getresponse().read()
 
-        self.connection.request("GET", f"/api/v1/confirms/{dealReference}", "", headers)
-        res = self.connection.getresponse()
-        response = res.read()
-        data = json.loads(response.decode("utf-8"))
-        dealId = data["affectedDeals"][0]["dealId"]
-
-        position["dealId"] = dealId
-        self.open_positions.append(position)
-
-
-    def get_all_positions(self):
-        payload = ''
-        headers = {
-            'X-SECURITY-TOKEN': self.__security_token,
-            'CST': self.__cst_token
-        }
-        self.connection.request("GET", "/api/v1/positions", payload, headers)
-        res = self.connection.getresponse()
-        data = res.read()
-        print(data.decode("utf-8"))
+    def show_open_positions(self):
+        for position in self.open_positions:
+            for k, v in position.items():
+                print(f"{k}: {v}")
+            print("---------------")
+        print(f"{len(self.open_positions)} open positions.")
 
     def close_position(self, dealId: str):
         payload = ''
@@ -86,6 +97,7 @@ class Broker:
             'CST': self.__cst_token
         }
         self.connection.request("DELETE", f"/api/v1/positions/{dealId}", payload, headers)
+        self.connection.getresponse().read()
 
     def close_all_positions(self):
         payload = ''
@@ -93,26 +105,30 @@ class Broker:
             'X-SECURITY-TOKEN': self.__security_token,
             'CST': self.__cst_token
         }
-        self.connection.request("GET", "/api/v1/positions", payload, headers)
-        res = self.connection.getresponse()
-        data = res.read()
-        print(data)
+        while len(self.open_positions) > 0:
+            for position in self.open_positions:
+                dealId = position["dealId"]
+                self.connection.request("DELETE", f"/api/v1/positions/{dealId}", payload, headers)
+                self.connection.getresponse().read()
+                self.open_positions.remove(position)
+                sleep(0.5)
 
-        for position in data["positions"]
-            dealId = position["dealId"]
-            self.connection.request("DELETE", f"/api/v1/positions/{dealId}", payload, headers)
-            self.open_positions.remove(position)
-
-
-
-
-obj = Broker()
-
-# print(obj.get_account_balance())
-# obj.create_position("SILVER", "BUY", 1.0, 22.0, 25.0)
-# obj.get_all_positions()
-# obj.close_position()
-
-obj.close_all_positions()
-
+def test_func():
+    while True:
+        sleep(0.5)
+        obj = Broker()
+        choice = input(">>>")
+        if choice == "n":
+            obj.create_position("SILVER", "BUY", 1.0, 22.0, 25.0)
+        elif choice == "s":
+            obj.show_open_positions()
+        elif choice == "c":
+            dealId = input("dealId >>>")
+            obj.close_position(dealId)
+        elif choice == "ca":
+            obj.close_all_positions()
+        elif choice == "q":
+            break
+        else:
+            continue
 
