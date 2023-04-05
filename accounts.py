@@ -19,7 +19,7 @@ class Broker:
             "password": "password"
         })
         headers = {
-            'X-CAP-API-KEY': '6NwR2oqK2tsHauJZ',
+            'X-CAP-API-KEY': 'API KEY',
             'Content-Type': 'application/json'
         }
         self.connection.request("POST", "/api/v1/session", payload, headers)
