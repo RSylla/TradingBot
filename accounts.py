@@ -15,8 +15,8 @@ class Broker:
 
     def __create_session(self):
         payload = json.dumps({
-            "identifier": "raivo.sylla@gmail.com",
-            "password": "@S3ctumS3mpra"
+            "identifier": "e-mail",
+            "password": "password"
         })
         headers = {
             'X-CAP-API-KEY': '6NwR2oqK2tsHauJZ',
